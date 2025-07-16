@@ -1,0 +1,25 @@
+{
+  "resources": {
+    "none": {
+      "color": "white",
+      "displayName": "Пусто"
+    },
+    "stone": {
+      "color": "gray",
+      "displayName": "Камень"
+    },
+    "ore": {
+      "color": "brown",
+      "displayName": "Руда"
+    },
+    "energy": {
+      "color": "yellow",
+      "displayName": "Энергия"
+    },
+    "wood": {
+      "color": "green",
+      "displayName": "Дерево"
+    }
+  },
+  "default_weights": [10, 5, 2, 1]
+}

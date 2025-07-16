@@ -1,7 +1,21 @@
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 const CELL_SIZE = 20;
-const MAP_SIZE = 20;
+const MAP_SIZE = 32;  // Теперь карта 32x32
+
+// Настройки камеры
+let cameraOffset = { x: 0, y: 0 };
+const PLAYER_SCREEN_X = Math.floor(canvas.width / 2 / CELL_SIZE);  // Центр экрана по X
+const PLAYER_SCREEN_Y = Math.floor(canvas.height / 2 / CELL_SIZE);  // Центр экрана по Y
+
+// Ресурсы и их цвета (легко расширяемо)
+const RESOURCES = {
+    none:  { color: 'white',   displayName: 'empty' },  // Пример нового ресурса
+    stone: { color: 'gray',   displayName: 'Камень' },
+    ore:   { color: 'brown',  displayName: 'Руда' },
+    energy: { color: 'yellow', displayName: 'Энергия' },
+    wood:  { color: 'green',  displayName: 'Дерево' },  // Пример нового ресурса
+};
 
 let gameState = {};
 const socket = new WebSocket('ws://localhost:8000/ws');
@@ -20,24 +34,41 @@ document.addEventListener('keydown', (e) => {
 function drawGame() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     
-    // Отрисовка карты
-    for (let y = 0; y < MAP_SIZE; y++) {
-        for (let x = 0; x < MAP_SIZE; x++) {
-            const resource = gameState.map[y][x];
-            if (resource) {
-                ctx.fillStyle = 
-                    resource === 'stone' ? 'gray' :
-                    resource === 'ore' ? 'brown' : 'yellow';
-                ctx.fillRect(x * CELL_SIZE, y * CELL_SIZE, CELL_SIZE, CELL_SIZE);
+    // Смещение камеры (игрок в центре)
+    cameraOffset.x = PLAYER_SCREEN_X - gameState.player.x;
+    cameraOffset.y = PLAYER_SCREEN_Y - gameState.player.y;
+
+    // Видимая область в координатах карты
+    const startX = Math.floor(-cameraOffset.x);
+    const startY = Math.floor(-cameraOffset.y);
+    const endX = startX + Math.ceil(canvas.width / CELL_SIZE) + 1;
+    const endY = startY + Math.ceil(canvas.height / CELL_SIZE) + 1;
+
+    // Отрисовка с учётом зацикленности
+    for (let y = startY; y < endY; y++) {
+        for (let x = startX; x < endX; x++) {
+            // Применяем модуль для зацикленности
+            const mapX = (x + MAP_SIZE) % MAP_SIZE;
+            const mapY = (y + MAP_SIZE) % MAP_SIZE;
+            
+            const resource = gameState.map[mapY][mapX];
+            if (resource && RESOURCES[resource]) {
+                ctx.fillStyle = RESOURCES[resource].color;
+                ctx.fillRect(
+                    (x + cameraOffset.x) * CELL_SIZE,
+                    (y + cameraOffset.y) * CELL_SIZE,
+                    CELL_SIZE,
+                    CELL_SIZE
+                );
             }
         }
     }
-    
-    // Отрисовка игрока
+
+    // Игрок (в центре экрана)
     ctx.fillStyle = 'blue';
     ctx.fillRect(
-        gameState.player.x * CELL_SIZE,
-        gameState.player.y * CELL_SIZE,
+        PLAYER_SCREEN_X * CELL_SIZE,
+        PLAYER_SCREEN_Y * CELL_SIZE,
         CELL_SIZE,
         CELL_SIZE
     );

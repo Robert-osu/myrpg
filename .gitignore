@@ -1,0 +1,19 @@
+# IDE/редакторы
+.vscode/
+.idea/
+*.swp
+*.swo
+
+
+# Python
+*.pyo
+*.pyd
+*.pyi
+*.so
+.Python
+venv/
+env/
+.venv/
+.env
+__pycache__/
+*.pyc
