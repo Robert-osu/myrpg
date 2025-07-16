@@ -1,6 +1,6 @@
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
-const CELL_SIZE = 20;
+const CELL_SIZE = 32;
 const MAP_SIZE = 32;  // Теперь карта 32x32
 
 // Настройки камеры
