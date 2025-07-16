@@ -281,6 +281,175 @@ function drawOverlappingCell(x, y, size, color, overlapFactor = 0.2) {
     ctx.stroke();
 }
 
+function drawPixelNoiseCell(x, y, size, color) {
+    ctx.fillStyle = color;
+    ctx.fillRect(x, y, size, size);
+    
+    // Добавляем пиксельный шум
+    const pixelSize = size / 8;
+    for(let px = 0; px < size; px += pixelSize) {
+        for(let py = 0; py < size; py += pixelSize) {
+            if(Math.random() > 0.7) {
+                ctx.fillStyle = `rgba(255,255,255,${Math.random() * 0.3})`;
+                ctx.fillRect(x + px, y + py, pixelSize, pixelSize);
+            }
+        }
+    }
+}
+
+function drawCrystalCell(x, y, size, color) {
+    const center = { x: x + size/2, y: y + size/2 };
+    const spikes = 5 + Math.floor(Math.random() * 3);
+    
+    ctx.save();
+    ctx.beginPath();
+    
+    // Рисуем кристалл
+    for(let i = 0; i < spikes; i++) {
+        const angle = (i * Math.PI * 2 / spikes) + Math.random() * 0.2;
+        const radius = size * (0.4 + Math.random() * 0.3);
+        const px = center.x + Math.cos(angle) * radius;
+        const py = center.y + Math.sin(angle) * radius;
+        
+        if(i === 0) ctx.moveTo(px, py);
+        else ctx.lineTo(px, py);
+    }
+    
+    ctx.closePath();
+    ctx.fillStyle = color;
+    ctx.fill();
+    
+    // Добавляем блики
+    ctx.strokeStyle = 'rgba(255,255,255,0.3)';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    ctx.restore();
+}
+
+function drawOrganicCell(x, y, size, color) {
+    const time = Date.now() / 500;
+    const pulse = Math.sin(time) * 0.1 + 1;
+    
+    ctx.save();
+    ctx.beginPath();
+    
+    // Пульсирующая форма
+    for(let i = 0; i < 10; i++) {
+        const angle = (i / 10) * Math.PI * 2;
+        const radius = size/2 * (0.8 + Math.sin(time + i) * 0.2) * pulse;
+        const px = x + size/2 + Math.cos(angle) * radius;
+        const py = y + size/2 + Math.sin(angle) * radius;
+        
+        if(i === 0) ctx.moveTo(px, py);
+        else ctx.lineTo(px, py);
+    }
+    
+    ctx.closePath();
+    ctx.fillStyle = color;
+    ctx.fill();
+    ctx.restore();
+}
+
+
+
+function drawStoneCell(x, y, size, baseColor = '#7a7a7a') {
+    const ctx = canvas.getContext('2d');
+    const centerX = x + size/2;
+    const centerY = y + size/2;
+    
+    // Создаем форму камня (8-угольник с неровными сторонами)
+    ctx.beginPath();
+    for(let i = 0; i < 8; i++) {
+        const angle = (i / 8) * Math.PI * 2;
+        const radius = size/2 * (0.7 + Math.random() * 0.3);
+        const px = centerX + Math.cos(angle) * radius;
+        const py = centerY + Math.sin(angle) * radius;
+        
+        if(i === 0) ctx.moveTo(px, py);
+        else ctx.lineTo(px, py);
+    }
+    ctx.closePath();
+
+    // Создаем градиент вручную (без shadeColor)
+    const gradient = ctx.createLinearGradient(
+        x, y,
+        x + size, y + size
+    );
+    gradient.addColorStop(0, lightenColor(baseColor, 20));
+    gradient.addColorStop(1, darkenColor(baseColor, 20));
+
+    ctx.fillStyle = gradient;
+    ctx.fill();
+
+    // Текстура трещин
+    ctx.strokeStyle = 'rgba(0,0,0,0.2)';
+    ctx.lineWidth = 1;
+    for(let i = 0; i < 3; i++) {
+        ctx.beginPath();
+        ctx.moveTo(
+            centerX + (Math.random() - 0.5) * size/3,
+            centerY + (Math.random() - 0.5) * size/3
+        );
+        ctx.lineTo(
+            centerX + (Math.random() - 0.5) * size/2,
+            centerY + (Math.random() - 0.5) * size/2
+        );
+        ctx.stroke();
+    }
+
+    // Минеральные вкрапления (3 разных оттенка)
+    const mineralColors = [
+        '#ffffff', // Кварц
+        '#f0e68c', // Пирит
+        '#add8e6'  // Кальцит
+    ];
+    
+    for(let i = 0; i < 5; i++) {
+        const spotSize = Math.random() * size/10 + 1;
+        ctx.fillStyle = mineralColors[Math.floor(Math.random() * mineralColors.length)];
+        ctx.beginPath();
+        ctx.arc(
+            centerX + (Math.random() - 0.5) * size/2,
+            centerY + (Math.random() - 0.5) * size/2,
+            spotSize,
+            0, Math.PI * 2
+        );
+        ctx.fill();
+    }
+
+    // Тень для объема
+    ctx.strokeStyle = 'rgba(0,0,0,0.15)';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+}
+
+// Простые функции для светлого/темного оттенков
+function lightenColor(color, percent) {
+    return adjustColorBrightness(color, Math.abs(percent));
+}
+
+function darkenColor(color, percent) {
+    return adjustColorBrightness(color, -Math.abs(percent));
+}
+
+function adjustColorBrightness(color, percent) {
+    // Для HEX-цветов без прозрачности (#RRGGBB)
+    const num = parseInt(color.substring(1), 16);
+    const amt = Math.round(2.55 * percent);
+    
+    const r = Math.min(255, Math.max(0, (num >> 16) + amt));
+    const g = Math.min(255, Math.max(0, (num >> 8 & 0x00FF) + amt));
+    const b = Math.min(255, Math.max(0, (num & 0x0000FF) + amt));
+    
+    return `#${(
+        (1 << 24) + (r << 16) + (g << 8) + b
+    ).toString(16).slice(1)}`;
+}
+
+
+
+
+
 // Функция отрисовки
 function drawGame() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -313,7 +482,7 @@ function drawGame() {
                 // drawAnimatedCell((startCol + col) * CELL_SIZE + cameraX, 
                 //     (startRow + row) * CELL_SIZE + cameraY, resource)
                 drawOverlappingCell((startCol + col) * CELL_SIZE + cameraX, 
-                (startRow + row) * CELL_SIZE + cameraY, CELL_SIZE, '#888888', 0.01);
+                (startRow + row) * CELL_SIZE + cameraY, CELL_SIZE, '#88727eff', 0.001);
             }
         }
     }
