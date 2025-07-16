@@ -3,18 +3,71 @@
 <head>
     <title>Игра</title>
     <style>
-        main { display:flex; flex-direction: column; align-items: center;}
-        canvas { border: 1px solid black; }
-        #inventory { margin-top: 10px; }
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden; /* Убираем скролл */
+        }
+        
+        main {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            height: 100vh; /* 100% высоты экрана */
+            background: #222; /* Фон на случай небольших отступов */
+        }
+        
+        #gameCanvas {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain; /* Сохраняет пропорции */
+            display: block;
+            border-radius: 50px;
+        }
+        
+        #inventory {
+            margin: 10px;
+            color: white;
+            font-family: Arial;
+        }
     </style>
 </head>
 <body>
     <main>
-        <canvas id="gameCanvas" width="400" height="400"></canvas>
-        <div id="inventory">Инвентарь: Камень: 0, Руда: 0, Энергия: 0</div>
+        <canvas id="gameCanvas"></canvas>
+        
     </main>
-    
-    
+    <div id="inventory">Инвентарь: Камень: 0, Руда: 0, Энергия: 0</div>
+
     <script src="game.js"></script>
+    <script>
+        // Динамическая настройка размера canvas
+        function resizeCanvas() {
+            const canvas = document.getElementById('gameCanvas');
+            const main = document.querySelector('main');
+            
+            // Размеры с учетом инвентаря (оставляем 50px снизу)
+            const maxHeight = window.innerHeight - 50;
+            const maxWidth = window.innerWidth;
+            
+            // Сохраняем пропорции 1:1 (или ваши нужные)
+            const size = Math.min(maxWidth, maxHeight);
+            
+            canvas.width = size;
+            canvas.height = size;
+            
+            // Центрируем
+            canvas.style.width = size + 'px';
+            canvas.style.height = size + 'px';
+        }
+
+        // Инициализация и обработка ресайза
+        window.addEventListener('load', resizeCanvas);
+        window.addEventListener('resize', resizeCanvas);
+    </script>
 </body>
 </html>

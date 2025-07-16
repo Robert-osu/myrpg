@@ -3,21 +3,38 @@ const ctx = canvas.getContext('2d');
 const CELL_SIZE = 32;
 const MAP_SIZE = 32;  // Теперь карта 32x32
 
-// Настройки камеры
-let cameraOffset = { x: 0, y: 0 };
-const PLAYER_SCREEN_X = Math.floor(canvas.width / 2 / CELL_SIZE);  // Центр экрана по X
-const PLAYER_SCREEN_Y = Math.floor(canvas.height / 2 / CELL_SIZE);  // Центр экрана по Y
-
-// Ресурсы и их цвета (легко расширяемо)
-const RESOURCES = {
-    none:  { color: 'white',   displayName: 'empty' },  // Пример нового ресурса
-    stone: { color: 'gray',   displayName: 'Камень' },
-    ore:   { color: 'brown',  displayName: 'Руда' },
-    energy: { color: 'yellow', displayName: 'Энергия' },
-    wood:  { color: 'green',  displayName: 'Дерево' },  // Пример нового ресурса
+// Настройки камеры (ИЗМЕНЕНО)
+let cameraOffset = { 
+    x: -Math.floor(canvas.width / 2) + CELL_SIZE/2, 
+    y: -Math.floor(canvas.height / 2) + CELL_SIZE/2
 };
 
-let gameState = {};
+
+// Создаем текстуры для всех ресурсов
+const RESOURCES = {
+    none: { 
+        color: '#ffffffff',
+        texture: createTexture('#888888', CELL_SIZE),
+        displayName: 'Камень' 
+    },
+    stone: {
+        color: '#b87333',
+        texture: createTexture('#b87333', CELL_SIZE),
+        displayName: 'Руда'
+    },
+    ore: { 
+        color: '#888888ff',
+        texture: createTexture('#888888', CELL_SIZE),
+        displayName: 'Камень' 
+    },
+    energy: {
+        color: '#6233b8ff',
+        texture: createTexture('#b87333', CELL_SIZE),
+        displayName: 'Руда'
+    }
+    // ... остальные ресурсы
+};
+
 const socket = new WebSocket('ws://localhost:8000/ws');
 
 // Обработка клавиш управления
@@ -30,33 +47,74 @@ document.addEventListener('keydown', (e) => {
     }
 });
 
-// Отрисовка игры
+
+// Глобальные переменные
+let lastServerState = null;
+let currentRenderState = {
+    player: { x: 0, y: 0 },
+    map: Array(MAP_SIZE).fill().map(() => Array(MAP_SIZE).fill('none')),
+    inventory: { stone: 0, ore: 0, energy: 0 }
+};
+
+// Основная функция интерполяции
+function interpolateState(deltaTime) {
+    if (!lastServerState) return;
+
+    // Интерполяция позиции игрока с учетом зацикленности карты
+    const lerpSpeed = 5.0; // Скорость интерполяции
+    const mapSize = MAP_SIZE;
+    
+    // Вычисляем кратчайшее направление для X
+    let dx = lastServerState.player.x - currentRenderState.player.x;
+    if (Math.abs(dx) > mapSize / 2) {
+        dx = dx > 0 ? dx - mapSize : dx + mapSize;
+    }
+    
+    // Вычисляем кратчайшее направление для Y
+    let dy = lastServerState.player.y - currentRenderState.player.y;
+    if (Math.abs(dy) > mapSize / 2) {
+        dy = dy > 0 ? dy - mapSize : dy + mapSize;
+    }
+    
+    // Применяем интерполяцию
+    currentRenderState.player.x += dx * lerpSpeed * deltaTime;
+    currentRenderState.player.y += dy * lerpSpeed * deltaTime;
+    
+    // Нормализуем координаты
+    currentRenderState.player.x = (currentRenderState.player.x + mapSize) % mapSize;
+    currentRenderState.player.y = (currentRenderState.player.y + mapSize) % mapSize;
+    
+    // Копируем остальные данные
+    currentRenderState.map = lastServerState.map;
+    currentRenderState.inventory = lastServerState.inventory;
+}
+
+// Функция отрисовки
 function drawGame() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     
-    // Смещение камеры (игрок в центре)
-    cameraOffset.x = PLAYER_SCREEN_X - gameState.player.x;
-    cameraOffset.y = PLAYER_SCREEN_Y - gameState.player.y;
-
-    // Видимая область в координатах карты
-    const startX = Math.floor(-cameraOffset.x);
-    const startY = Math.floor(-cameraOffset.y);
-    const endX = startX + Math.ceil(canvas.width / CELL_SIZE) + 1;
-    const endY = startY + Math.ceil(canvas.height / CELL_SIZE) + 1;
-
-    // Отрисовка с учётом зацикленности
-    for (let y = startY; y < endY; y++) {
-        for (let x = startX; x < endX; x++) {
-            // Применяем модуль для зацикленности
-            const mapX = (x + MAP_SIZE) % MAP_SIZE;
-            const mapY = (y + MAP_SIZE) % MAP_SIZE;
+    // Центрирование камеры на игроке
+    const cameraX = -currentRenderState.player.x * CELL_SIZE + canvas.width / 2 - CELL_SIZE / 2;
+    const cameraY = -currentRenderState.player.y * CELL_SIZE + canvas.height / 2 - CELL_SIZE / 2;
+    
+    // Рассчитываем видимую область
+    const startCol = Math.floor(-cameraX / CELL_SIZE);
+    const startRow = Math.floor(-cameraY / CELL_SIZE);
+    const visibleCols = Math.ceil(canvas.width / CELL_SIZE) + 2;
+    const visibleRows = Math.ceil(canvas.height / CELL_SIZE) + 2;
+    
+    // Отрисовываем карту с учетом зацикленности
+    for (let row = 0; row < visibleRows; row++) {
+        for (let col = 0; col < visibleCols; col++) {
+            const mapX = (startCol + col + MAP_SIZE) % MAP_SIZE;
+            const mapY = (startRow + row + MAP_SIZE) % MAP_SIZE;
             
-            const resource = gameState.map[mapY][mapX];
-            if (resource && RESOURCES[resource]) {
+            const resource = currentRenderState.map[mapY][mapX];
+            if (RESOURCES[resource]) {
                 ctx.fillStyle = RESOURCES[resource].color;
                 ctx.fillRect(
-                    (x + cameraOffset.x) * CELL_SIZE,
-                    (y + cameraOffset.y) * CELL_SIZE,
+                    (startCol + col) * CELL_SIZE + cameraX,
+                    (startRow + row) * CELL_SIZE + cameraY,
                     CELL_SIZE,
                     CELL_SIZE
                 );
@@ -64,23 +122,39 @@ function drawGame() {
         }
     }
 
-    // Игрок (в центре экрана)
+    
+    
+    // Отрисовываем игрока (в центре экрана)
     ctx.fillStyle = 'blue';
     ctx.fillRect(
-        PLAYER_SCREEN_X * CELL_SIZE,
-        PLAYER_SCREEN_Y * CELL_SIZE,
+        canvas.width / 2 - CELL_SIZE / 2,
+        canvas.height / 2 - CELL_SIZE / 2,
         CELL_SIZE,
         CELL_SIZE
     );
 }
 
-// Обновление интерфейса
-socket.onmessage = (event) => {
-    gameState = JSON.parse(event.data);
+// Игровой цикл
+let lastTime = 0;
+function gameLoop(timestamp) {
+    const deltaTime = (timestamp - lastTime) / 1000;
+    lastTime = timestamp;
+    
+    interpolateState(deltaTime);
     drawGame();
     
-    // Обновление инвентаря
-    const inv = JSON.parse(gameState.inventory);
+    requestAnimationFrame(gameLoop);
+}
+
+// Обработка сообщений от сервера
+socket.onmessage = (event) => {
+    lastServerState = JSON.parse(event.data);
+    
+    // Обновляем инвентарь сразу
+    const inv = JSON.parse(lastServerState.inventory);
     document.getElementById('inventory').innerText = 
         `Инвентарь: Камень: ${inv.stone}, Руда: ${inv.ore}, Энергия: ${inv.energy}`;
 };
+
+// Запуск игры
+requestAnimationFrame(gameLoop);
