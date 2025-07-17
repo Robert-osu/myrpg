@@ -12,52 +12,22 @@ let cameraOffset = {
 
 
 
-// Создаем текстуры для разных ресурсов
-function createTexture(color, size) {
-    const textureCanvas = document.createElement('canvas');
-    textureCanvas.width = textureCanvas.height = size;
-    const texCtx = textureCanvas.getContext('2d');
-    
-    // Базовый цвет
-    texCtx.fillStyle = color;
-    texCtx.fillRect(0, 0, size, size);
-    
-    // Добавляем шум
-    const imageData = texCtx.getImageData(0, 0, size, size);
-    const data = imageData.data;
-    
-    for (let i = 0; i < data.length; i += 4) {
-        // Добавляем случайные вариации цвета
-        const noise = Math.random() * 40 - 20;
-        data[i] = Math.min(255, Math.max(0, data[i] + noise)); // R
-        data[i+1] = Math.min(255, Math.max(0, data[i+1] + noise)); // G
-        data[i+2] = Math.min(255, Math.max(0, data[i+2] + noise)); // B
-    }
-    
-    texCtx.putImageData(imageData, 0, 0);
-    return textureCanvas;
-}
-
 // Создаем текстуры для всех ресурсов
 const RESOURCES = {
     none: { 
         color: '#ffffffff',
-        texture: createTexture('#888888', CELL_SIZE),
         displayName: 'Камень' 
     },
     stone: {
         color: '#b87333',
-        texture: createTexture('#b87333', CELL_SIZE),
         displayName: 'Руда'
     },
     ore: { 
         color: '#888888ff',
-        texture: createTexture('#888888', CELL_SIZE),
         displayName: 'Камень' 
     },
     energy: {
         color: '#6233b8ff',
-        texture: createTexture('#b87333', CELL_SIZE),
         displayName: 'Руда'
     }
     // ... остальные ресурсы
@@ -71,6 +41,18 @@ document.addEventListener('keydown', (e) => {
     const directions = { 'w': 'up', 'a': 'left', 's': 'down', 'd': 'right' };
     if (directions[e.key]) {
         socket.send(JSON.stringify({ action: "move", direction: directions[e.key] }));
+        switch(e.key) {
+            case 'w':
+                break;
+            case 'a':
+                break;
+            case 's':
+                break;
+            case 'd':
+                break;
+            default:
+                break;
+        }
     } else if (e.key === ' ') {
         socket.send(JSON.stringify({ action: "collect" }));
     }
@@ -118,29 +100,11 @@ function interpolateState(deltaTime) {
     currentRenderState.inventory = lastServerState.inventory;
 }
 
-function drawCell(x, y, resource) {
+function drawCell(x, y, color) {
     const size = CELL_SIZE;
-    const padding = 2; // Величина неровностей
-    
-    // Случайные смещения углов
-    const offsets = [
-        { x: Math.random() * padding, y: Math.random() * padding },
-        { x: size - Math.random() * padding, y: Math.random() * padding },
-        { x: size - Math.random() * padding, y: size - Math.random() * padding },
-        { x: Math.random() * padding, y: size - Math.random() * padding }
-    ];
-
-    ctx.save();
-    ctx.beginPath();
-    ctx.moveTo(x + offsets[0].x, y + offsets[0].y);
-    ctx.lineTo(x + offsets[1].x, y + offsets[1].y);
-    ctx.lineTo(x + offsets[2].x, y + offsets[2].y);
-    ctx.lineTo(x + offsets[3].x, y + offsets[3].y);
-    ctx.closePath();
-    ctx.clip();
 
     // Заливка с текстурой
-    ctx.fillStyle = RESOURCES[resource].color;
+    ctx.fillStyle = color;
     ctx.fillRect(x, y, size, size);
     
     // Восстановление контекста
@@ -152,301 +116,6 @@ function drawCell(x, y, resource) {
 
     
 }
-
-function drawHexCell(x, y, resource) {
-    const size = CELL_SIZE;
-    const centerX = x + size/2;
-    const centerY = y + size/2;
-    
-    ctx.beginPath();
-    for (let i = 0; i < 6; i++) {
-        const angle = Math.PI/3 * i;
-        const px = centerX + size * 0.4 * Math.cos(angle);
-        const py = centerY + size * 0.4 * Math.sin(angle);
-        if (i === 0) ctx.moveTo(px, py);
-        else ctx.lineTo(px, py);
-    }
-    ctx.closePath();
-    
-    ctx.fillStyle = RESOURCES[resource].color;
-    ctx.fill();
-    ctx.strokeStyle = '#000';
-    ctx.stroke();
-}
-
-let animationPhase = 0;
-
-function drawAnimatedCell(x, y, resource) {
-    const size = CELL_SIZE;
-    animationPhase += 0.01;
-    
-    ctx.save();
-    ctx.beginPath();
-    ctx.arc(x + size/2, y + size/2, size/2 * (0.9 + Math.sin(animationPhase)*0.1), 0, Math.PI*2);
-    ctx.fillStyle = RESOURCES[resource].color;
-    ctx.fill();
-    ctx.restore();
-}
-
-function drawTestCell(x, y, size, color, edges) {
-    // edges: [top, right, bottom, left] - какие грани неровные (true/false)
-    const ctx = canvas.getContext('2d');
-    const variation = size * 0.15; // Максимальное отклонение края
-    
-    // Создаем форму ячейки
-    ctx.beginPath();
-    
-    // Верхний край
-    if (edges[0]) {
-        ctx.moveTo(x + size * 0.2, y + Math.random() * variation);
-        ctx.lineTo(x + size * 0.8, y + Math.random() * variation);
-    } else {
-        ctx.moveTo(x, y);
-        ctx.lineTo(x + size, y);
-    }
-    
-    // Правый край
-    if (edges[1]) {
-        ctx.lineTo(x + size - Math.random() * variation, y + size * 0.2);
-        ctx.lineTo(x + size - Math.random() * variation, y + size * 0.8);
-    } else {
-        ctx.lineTo(x + size, y + size);
-    }
-    
-    // Нижний край
-    if (edges[2]) {
-        ctx.lineTo(x + size * 0.8, y + size - Math.random() * variation);
-        ctx.lineTo(x + size * 0.2, y + size - Math.random() * variation);
-    } else {
-        ctx.lineTo(x, y + size);
-    }
-    
-    // Левый край
-    if (edges[3]) {
-        ctx.lineTo(x + Math.random() * variation, y + size * 0.8);
-        ctx.lineTo(x + Math.random() * variation, y + size * 0.2);
-    } else {
-        ctx.lineTo(x, y);
-    }
-    
-    // Заливаем и обводим
-    ctx.fillStyle = color;
-    ctx.fill();
-    ctx.strokeStyle = 'rgba(0,0,0,0.3)';
-    ctx.lineWidth = 1;
-    ctx.stroke();
-}
-
-function drawOverlappingCell(x, y, size, color, overlapFactor = 0.2) {
-    const ctx = canvas.getContext('2d');
-    const overlap = size * overlapFactor; // Насколько сильно заезжает (20% от размера)
-    
-    // Случайные смещения для каждой стороны
-    const topOverlap = Math.random() * overlap;
-    const rightOverlap = Math.random() * overlap;
-    const bottomOverlap = Math.random() * overlap;
-    const leftOverlap = Math.random() * overlap;
-    
-    // Рисуем основную форму
-    ctx.beginPath();
-    ctx.moveTo(x - leftOverlap, y - topOverlap);
-    ctx.lineTo(x + size + rightOverlap, y - topOverlap);
-    ctx.lineTo(x + size + rightOverlap, y + size + bottomOverlap);
-    ctx.lineTo(x - leftOverlap, y + size + bottomOverlap);
-    ctx.closePath();
-    
-    // Заливка с прозрачностью
-    ctx.fillStyle = color;
-    ctx.globalAlpha = 0.8;
-    ctx.fill();
-    ctx.globalAlpha = 1.0;
-    
-    // Текстурирование
-    ctx.save();
-    ctx.clip(); // Обрезаем по форме ячейки
-    for (let i = 0; i < 10; i++) {
-        const nx = x + Math.random() * size;
-        const ny = y + Math.random() * size;
-        const radius = Math.random() * 3;
-        ctx.fillStyle = `rgba(0,0,0,${Math.random() * 0.2})`;
-        ctx.beginPath();
-        ctx.arc(nx, ny, radius, 0, Math.PI * 2);
-        ctx.fill();
-    }
-    ctx.restore();
-    
-    // Обводка с эффектом объема
-    ctx.strokeStyle = 'rgba(0,0,0,0.3)';
-    ctx.lineWidth = 2;
-    ctx.stroke();
-}
-
-function drawPixelNoiseCell(x, y, size, color) {
-    ctx.fillStyle = color;
-    ctx.fillRect(x, y, size, size);
-    
-    // Добавляем пиксельный шум
-    const pixelSize = size / 8;
-    for(let px = 0; px < size; px += pixelSize) {
-        for(let py = 0; py < size; py += pixelSize) {
-            if(Math.random() > 0.7) {
-                ctx.fillStyle = `rgba(255,255,255,${Math.random() * 0.3})`;
-                ctx.fillRect(x + px, y + py, pixelSize, pixelSize);
-            }
-        }
-    }
-}
-
-function drawCrystalCell(x, y, size, color) {
-    const center = { x: x + size/2, y: y + size/2 };
-    const spikes = 5 + Math.floor(Math.random() * 3);
-    
-    ctx.save();
-    ctx.beginPath();
-    
-    // Рисуем кристалл
-    for(let i = 0; i < spikes; i++) {
-        const angle = (i * Math.PI * 2 / spikes) + Math.random() * 0.2;
-        const radius = size * (0.4 + Math.random() * 0.3);
-        const px = center.x + Math.cos(angle) * radius;
-        const py = center.y + Math.sin(angle) * radius;
-        
-        if(i === 0) ctx.moveTo(px, py);
-        else ctx.lineTo(px, py);
-    }
-    
-    ctx.closePath();
-    ctx.fillStyle = color;
-    ctx.fill();
-    
-    // Добавляем блики
-    ctx.strokeStyle = 'rgba(255,255,255,0.3)';
-    ctx.lineWidth = 2;
-    ctx.stroke();
-    ctx.restore();
-}
-
-function drawOrganicCell(x, y, size, color) {
-    const time = Date.now() / 500;
-    const pulse = Math.sin(time) * 0.1 + 1;
-    
-    ctx.save();
-    ctx.beginPath();
-    
-    // Пульсирующая форма
-    for(let i = 0; i < 10; i++) {
-        const angle = (i / 10) * Math.PI * 2;
-        const radius = size/2 * (0.8 + Math.sin(time + i) * 0.2) * pulse;
-        const px = x + size/2 + Math.cos(angle) * radius;
-        const py = y + size/2 + Math.sin(angle) * radius;
-        
-        if(i === 0) ctx.moveTo(px, py);
-        else ctx.lineTo(px, py);
-    }
-    
-    ctx.closePath();
-    ctx.fillStyle = color;
-    ctx.fill();
-    ctx.restore();
-}
-
-
-
-function drawStoneCell(x, y, size, baseColor = '#7a7a7a') {
-    const ctx = canvas.getContext('2d');
-    const centerX = x + size/2;
-    const centerY = y + size/2;
-    
-    // Создаем форму камня (8-угольник с неровными сторонами)
-    ctx.beginPath();
-    for(let i = 0; i < 8; i++) {
-        const angle = (i / 8) * Math.PI * 2;
-        const radius = size/2 * (0.7 + Math.random() * 0.3);
-        const px = centerX + Math.cos(angle) * radius;
-        const py = centerY + Math.sin(angle) * radius;
-        
-        if(i === 0) ctx.moveTo(px, py);
-        else ctx.lineTo(px, py);
-    }
-    ctx.closePath();
-
-    // Создаем градиент вручную (без shadeColor)
-    const gradient = ctx.createLinearGradient(
-        x, y,
-        x + size, y + size
-    );
-    gradient.addColorStop(0, lightenColor(baseColor, 20));
-    gradient.addColorStop(1, darkenColor(baseColor, 20));
-
-    ctx.fillStyle = gradient;
-    ctx.fill();
-
-    // Текстура трещин
-    ctx.strokeStyle = 'rgba(0,0,0,0.2)';
-    ctx.lineWidth = 1;
-    for(let i = 0; i < 3; i++) {
-        ctx.beginPath();
-        ctx.moveTo(
-            centerX + (Math.random() - 0.5) * size/3,
-            centerY + (Math.random() - 0.5) * size/3
-        );
-        ctx.lineTo(
-            centerX + (Math.random() - 0.5) * size/2,
-            centerY + (Math.random() - 0.5) * size/2
-        );
-        ctx.stroke();
-    }
-
-    // Минеральные вкрапления (3 разных оттенка)
-    const mineralColors = [
-        '#ffffff', // Кварц
-        '#f0e68c', // Пирит
-        '#add8e6'  // Кальцит
-    ];
-    
-    for(let i = 0; i < 5; i++) {
-        const spotSize = Math.random() * size/10 + 1;
-        ctx.fillStyle = mineralColors[Math.floor(Math.random() * mineralColors.length)];
-        ctx.beginPath();
-        ctx.arc(
-            centerX + (Math.random() - 0.5) * size/2,
-            centerY + (Math.random() - 0.5) * size/2,
-            spotSize,
-            0, Math.PI * 2
-        );
-        ctx.fill();
-    }
-
-    // Тень для объема
-    ctx.strokeStyle = 'rgba(0,0,0,0.15)';
-    ctx.lineWidth = 2;
-    ctx.stroke();
-}
-
-// Простые функции для светлого/темного оттенков
-function lightenColor(color, percent) {
-    return adjustColorBrightness(color, Math.abs(percent));
-}
-
-function darkenColor(color, percent) {
-    return adjustColorBrightness(color, -Math.abs(percent));
-}
-
-function adjustColorBrightness(color, percent) {
-    // Для HEX-цветов без прозрачности (#RRGGBB)
-    const num = parseInt(color.substring(1), 16);
-    const amt = Math.round(2.55 * percent);
-    
-    const r = Math.min(255, Math.max(0, (num >> 16) + amt));
-    const g = Math.min(255, Math.max(0, (num >> 8 & 0x00FF) + amt));
-    const b = Math.min(255, Math.max(0, (num & 0x0000FF) + amt));
-    
-    return `#${(
-        (1 << 24) + (r << 16) + (g << 8) + b
-    ).toString(16).slice(1)}`;
-}
-
-
 
 
 
@@ -472,17 +141,10 @@ function drawGame() {
             
             const resource = currentRenderState.map[mapY][mapX];
             if (RESOURCES[resource]) {
-                // ctx.fillStyle = RESOURCES[resource].color;
-                // ctx.fillRect(
-                //     (startCol + col) * CELL_SIZE + cameraX,
-                //     (startRow + row) * CELL_SIZE + cameraY,
-                //     CELL_SIZE,
-                //     CELL_SIZE
-                // );
-                // drawAnimatedCell((startCol + col) * CELL_SIZE + cameraX, 
-                //     (startRow + row) * CELL_SIZE + cameraY, resource)
-                drawOverlappingCell((startCol + col) * CELL_SIZE + cameraX, 
-                (startRow + row) * CELL_SIZE + cameraY, CELL_SIZE, '#88727eff', 0.001);
+                drawCell(   (startCol + col) * CELL_SIZE + cameraX,
+                            (startRow + row) * CELL_SIZE + cameraY,
+                            RESOURCES[resource].color
+                )
             }
         }
     }
@@ -490,7 +152,7 @@ function drawGame() {
     
     
     // Отрисовываем игрока (в центре экрана)
-    ctx.fillStyle = 'blue';
+    ctx.fillStyle = '#46887aff';
     ctx.fillRect(
         canvas.width / 2 - CELL_SIZE / 2,
         canvas.height / 2 - CELL_SIZE / 2,
